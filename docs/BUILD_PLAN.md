@@ -4,6 +4,8 @@
 Provide a staged implementation plan for Silent Shift while preserving the working migration baseline and avoiding unsupported product claims.
 
 ## Milestone 1: domain types and fixture schema
+Status: IMPLEMENTED
+
 Entry criteria:
 - product contract approved
 - data contract agreed

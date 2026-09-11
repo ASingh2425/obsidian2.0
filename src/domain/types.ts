@@ -1,25 +1,7 @@
-# DATA_CONTRACT.md
+export const SCHEMA_VERSION = 'silent-shift.v1' as const;
 
-## Purpose
-This document defines the strict TypeScript-oriented data contracts for Silent Shift. The initial implementation is a synthetic-features domain engine. It is not a backend or live ingestion layer.
+export type SchemaVersion = typeof SCHEMA_VERSION;
 
-## Conventions
-- All domain logic must be implemented in TypeScript.
-- Preserve raw evidence and context separately.
-- Use stable IDs for every important record.
-- Evidence must reference source event IDs.
-- Narratives must reference evidence IDs.
-- Context matches must identify exactly which evidence was covered.
-- RiskAssessment must contain separate rawDeviation, contextCoverage, residualRisk, confidence and dataQuality fields.
-- Confidence is evidence confidence, not a probability of malicious intent.
-- Missing or poor-quality data increases uncertainty rather than risk.
-- `schemaVersion` is resolved as `"silent-shift.v1"`.
-- Event ordering is canonical: timestamp ascending, and when timestamps are equal, event IDs are sorted ascending using a locale-independent ordinal string comparison.
-- Pseudonymous entity identifiers are defined in Milestone 1 and used by default in case and audit records beginning in Milestone 8.
-
-## Shared primitive types
-
-```ts
 export type TelemetryDomain =
   | 'AUTHENTICATION'
   | 'FILE_RESOURCE_ACCESS'
@@ -44,8 +26,7 @@ export interface IdRecord {
   id: string;
 }
 
-export interface EvidenceId {
-  id: string;
+export interface EvidenceId extends IdRecord {
   sourceEventIds: string[];
   referenceType: 'EVENT' | 'BASELINE' | 'CONTEXT' | 'CHANGE_POINT' | 'RISK' | 'DECISION';
 }
@@ -58,11 +39,7 @@ export interface DataQuality {
   lowConfidenceSources: string[];
   notes?: string;
 }
-```
 
-## Core entities
-
-```ts
 export interface Entity extends IdRecord {
   entityType: 'USER' | 'DEVICE' | 'RESOURCE' | 'ROLE' | 'GROUP' | 'DESTINATION' | 'APP';
   tenantId: string;
@@ -87,13 +64,9 @@ export interface Resource extends IdRecord {
   location?: string;
   version?: string;
 }
-```
 
-## Event, fixture, and context structures
-
-```ts
 export interface SecurityEvent extends IdRecord {
-  schemaVersion: 'silent-shift.v1';
+  schemaVersion: SchemaVersion;
   actorEntityId: string;
   timestamp: string;
   domain: TelemetryDomain;
@@ -112,7 +85,7 @@ export interface SecurityEvent extends IdRecord {
 }
 
 export interface OrganizationalContextRecord extends IdRecord {
-  schemaVersion: 'silent-shift.v1';
+  schemaVersion: SchemaVersion;
   actorEntityId?: string;
   recordType: OrganizationalContextType;
   validFrom: string;
@@ -123,58 +96,8 @@ export interface OrganizationalContextRecord extends IdRecord {
   sourceEvidenceIds: string[];
 }
 
-export interface FeatureObservation extends IdRecord {
-  schemaVersion: 'silent-shift.v1';
-  eventIds: string[];
-  actorEntityId: string;
-  featureName: string;
-  featureValue: number;
-  observedAt: string;
-  source: 'EVENT' | 'DERIVED';
-}
-
-export interface BaselineSnapshot extends IdRecord {
-  schemaVersion: 'silent-shift.v1';
-  actorEntityId: string;
-  asOf: string;
-  personalHistory: Record<string, number>;
-  roleHistory: Record<string, number>;
-  peerCohortHistory: Record<string, number>;
-  resourceHistory: Record<string, number>;
-  coverage: number;
-  quality: DataQualityLevel;
-  sourceEventIds: string[];
-}
-```
-
-## Change points and evidence
-
-```ts
-export interface ChangePoint extends IdRecord {
-  schemaVersion: 'silent-shift.v1';
-  actorEntityId: string;
-  observedAt: string;
-  featureName: string;
-  rawDeviationScore: number;
-  relatedEventIds: string[];
-  evidenceId: string;
-}
-
-export interface EvidenceItem extends IdRecord {
-  schemaVersion: 'silent-shift.v1';
-  sourceEventIds: string[];
-  summary: string;
-  evidenceType: 'EVENT' | 'FEATURE' | 'BASELINE' | 'CONTEXT' | 'CHANGE_POINT' | 'RISK';
-  confidence: number; // 0..1, evidence confidence only
-  narrativeEvidenceIds: string[];
-}
-```
-
-## Context model
-
-```ts
 export interface ContextGrant extends IdRecord {
-  schemaVersion: 'silent-shift.v1';
+  schemaVersion: SchemaVersion;
   actorEntityId: string;
   validFrom: string;
   validTo: string;
@@ -187,8 +110,50 @@ export interface ContextGrant extends IdRecord {
   sourceEvidenceIds: string[];
 }
 
+export interface FeatureObservation extends IdRecord {
+  schemaVersion: SchemaVersion;
+  eventIds: string[];
+  actorEntityId: string;
+  featureName: string;
+  featureValue: number;
+  observedAt: string;
+  source: 'EVENT' | 'DERIVED';
+}
+
+export interface BaselineSnapshot extends IdRecord {
+  schemaVersion: SchemaVersion;
+  actorEntityId: string;
+  asOf: string;
+  personalHistory: Record<string, number>;
+  roleHistory: Record<string, number>;
+  peerCohortHistory: Record<string, number>;
+  resourceHistory: Record<string, number>;
+  coverage: number;
+  quality: DataQualityLevel;
+  sourceEventIds: string[];
+}
+
+export interface ChangePoint extends IdRecord {
+  schemaVersion: SchemaVersion;
+  actorEntityId: string;
+  observedAt: string;
+  featureName: string;
+  rawDeviationScore: number;
+  relatedEventIds: string[];
+  evidenceId: string;
+}
+
+export interface EvidenceItem extends IdRecord {
+  schemaVersion: SchemaVersion;
+  sourceEventIds: string[];
+  summary: string;
+  evidenceType: 'EVENT' | 'FEATURE' | 'BASELINE' | 'CONTEXT' | 'CHANGE_POINT' | 'RISK';
+  confidence: number;
+  narrativeEvidenceIds: string[];
+}
+
 export interface ContextMatch extends IdRecord {
-  schemaVersion: 'silent-shift.v1';
+  schemaVersion: SchemaVersion;
   contextGrantId: string;
   changePointId: string;
   matchedEvidenceIds: string[];
@@ -196,19 +161,15 @@ export interface ContextMatch extends IdRecord {
   outcome: ContextOutcome;
   notes: string;
 }
-```
 
-## Risk and case model
-
-```ts
 export interface RiskAssessment extends IdRecord {
-  schemaVersion: 'silent-shift.v1';
+  schemaVersion: SchemaVersion;
   caseId: string;
   relatedChangePointIds: string[];
   rawDeviation: number;
   contextCoverage: number;
   residualRisk: number;
-  confidence: number; // evidence confidence only; not probability of malicious intent
+  confidence: number;
   dataQuality: DataQuality;
   contextOutcome: ContextOutcome;
   sourceEvidenceIds: string[];
@@ -218,7 +179,7 @@ export interface RiskAssessment extends IdRecord {
 }
 
 export interface InvestigationCase extends IdRecord {
-  schemaVersion: 'silent-shift.v1';
+  schemaVersion: SchemaVersion;
   actorEntityId: string;
   createdAt: string;
   contextOutcome: ContextOutcome;
@@ -228,13 +189,9 @@ export interface InvestigationCase extends IdRecord {
   analystDecisionIds: string[];
   prototypeSessionId?: string;
 }
-```
 
-## Analyst decision and audit log
-
-```ts
 export interface AnalystDecision extends IdRecord {
-  schemaVersion: 'silent-shift.v1';
+  schemaVersion: SchemaVersion;
   caseId: string;
   actorEntityId: string;
   decision: 'NO_ACTION' | 'ESCALATE' | 'REQUEST_CONTEXT' | 'CLOSE' | 'REVIEW_LATER';
@@ -244,7 +201,7 @@ export interface AnalystDecision extends IdRecord {
 }
 
 export interface AuditEvent extends IdRecord {
-  schemaVersion: 'silent-shift.v1';
+  schemaVersion: SchemaVersion;
   eventType: 'CASE_CREATED' | 'CONTEXT_CORRECTION' | 'DECISION_LOGGED' | 'CASE_REOPENED';
   caseId?: string;
   decisionId?: string;
@@ -253,31 +210,34 @@ export interface AuditEvent extends IdRecord {
   evidenceIds: string[];
   createdAt: string;
 }
-```
 
-## Required invariants
-- Every important record must have a stable ID.
-- Evidence must reference source event IDs.
-- Narratives must reference evidence IDs.
-- Context matches must identify exactly which evidence was covered.
-- RiskAssessment must contain separate rawDeviation, contextCoverage, residualRisk, confidence and dataQuality fields.
-- Historical raw evidence must never be erased when context or analyst corrections are recorded.
-- Confidence must not be described as a probability of malicious intent.
-- Context outcome states must be explicit and not inferred from arbitrary percentage thresholds.
-- Prototype data must be session-scoped; durable storage is PLANNED.
-- `schemaVersion` must remain `"silent-shift.v1"` across fixture and domain objects.
-- Pseudonymous identifiers are used by default for case and audit display after Milestone 8 and in visual display by Milestone 10.
+export interface ScenarioMetadata {
+  name: string;
+  category: string;
+  synthetic: boolean;
+  syntheticDisclosure: string;
+  expectedClassification?: ContextOutcome | 'EXPLAINED' | 'PARTIALLY_EXPLAINED' | 'UNEXPLAINED' | 'INDETERMINATE';
+  notes?: string;
+}
 
-## Resolved schema decision
-The fixture schema version is now resolved to:
+export interface ScenarioFixture extends IdRecord {
+  schemaVersion: SchemaVersion;
+  metadata: ScenarioMetadata;
+  entities: Entity[];
+  resources: Resource[];
+  events: SecurityEvent[];
+  contextRecords: OrganizationalContextRecord[];
+  contextGrants: ContextGrant[];
+  contextMatches?: ContextMatch[];
+}
 
-```ts
-schemaVersion: "silent-shift.v1"
-```
+export interface ValidationIssue {
+  path: string;
+  code: string;
+  message: string;
+}
 
-## Open schema decisions
-The following items remain unresolved and require approval before implementation:
-- retention defaults after the demo session
-- thresholds for alert-budget ranking once scoring exists
-- final analyst decision taxonomy extensions
-- exact pseudonymization rules for demo and production-facing presentations
+export interface ValidationResult {
+  valid: boolean;
+  issues: ValidationIssue[];
+}
