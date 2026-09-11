@@ -15,6 +15,14 @@ This document defines the strict TypeScript-oriented data contracts for Silent S
 - Missing or poor-quality data increases uncertainty rather than risk.
 - `schemaVersion` is resolved as `"silent-shift.v1"`.
 - Event ordering is canonical: timestamp ascending, and when timestamps are equal, event IDs are sorted ascending using a locale-independent ordinal string comparison.
+- `FeatureObservation.eventIds` contains only contributing source events. It does not include unrelated evaluated events.
+- `FeatureObservation.id` is a deterministic unambiguous identifier in the form `feature|<encoded-schema>|<encoded-actor>|<encoded-start>|<encoded-end>|<encoded-feature-name>`, where each component is encoded with `encodeURIComponent` before the `|` join.
+- `observedVolume` is a real numeric observation only when defined. Missing `observedVolume` is not treated as numeric zero.
+- `failed_outcome_count` uses the record-level `outcome` field and counts only `FAILURE`.
+- `privilege_change_count` counts only actual privilege transitions: a valid privilege event with a changed privilege value, with at least one of `priorPrivilege` or `newPrivilege` present and the values not equal.
+- A no-event window is deterministic: emit zero-valued aggregate features for the actor, keep empty provenance arrays, and omit measurement features with no numeric observations.
+- Absence of a valid categorical count bucket means observed count zero for that actor/window. It does not represent unknown or unavailable telemetry. Consumers must normalize an absent categorical bucket to zero. Missing underlying telemetry or poor data coverage is represented in `DataQuality` in later milestones, not by inventing a category feature.
+- Absence of `observed_volume_sum` or `observed_volume_max` means no numeric volume observation was present for that actor/window. It must not be normalized to observed zero.
 - Pseudonymous entity identifiers are defined in Milestone 1 and used by default in case and audit records beginning in Milestone 8.
 
 ## Shared primitive types

@@ -175,7 +175,7 @@ const legitimateRoleChangeFixture: ScenarioFixture = {
   ],
   events: [
     event('event-role-login-001', 'entity-admin-user', '2024-04-01T08:00:00Z', 'AUTHENTICATION', 'LOGIN', 'LOGIN', undefined, 'entity-device-laptop-01', 'entity-device-laptop-01'),
-    event('event-role-change-002', 'entity-admin-user', '2024-04-01T08:10:00Z', 'PRIVILEGE_ACTIVITY', 'ROLE_CHANGE', 'ROLE_CHANGE', undefined, undefined, 'entity-device-laptop-01', 'ROLE-OPS-ADMIN', 'ROLE-OPS-ADMIN', 1),
+    event('event-role-change-002', 'entity-admin-user', '2024-04-01T08:10:00Z', 'PRIVILEGE_ACTIVITY', 'ROLE_CHANGE', 'ROLE_CHANGE', undefined, undefined, 'entity-device-laptop-01', 'ROLE-STD', 'ROLE-OPS-ADMIN', 1),
     event('event-role-read-003', 'entity-admin-user', '2024-04-01T08:12:00Z', 'FILE_RESOURCE_ACCESS', 'RESOURCE_ACCESS', 'READ', 'resource-data-archive', 'entity-project-migration', 'entity-device-laptop-01', 'ROLE-OPS-ADMIN', 'ROLE-OPS-ADMIN', 120),
   ],
 };

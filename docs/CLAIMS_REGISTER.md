@@ -25,6 +25,11 @@ Status: IMPLEMENTED
 Required evidence: Milestone 1 domain contracts, schema identifier, three disclosed synthetic fixtures, runtime validation, and fixture-integrity tests.
 Public use: permitted as a verified Milestone 1 capability only.
 
+### Claim: deterministic feature extraction with evidence-level provenance
+Status: IMPLEMENTED
+Required evidence: deterministic event windowing, feature extraction, provenance-linked FeatureObservation records, and passing Milestone 2 acceptance tests.
+Public use: permitted only as a verified Milestone 2 capability.
+
 ### Claim: context-aware behavioral detection
 Status: PLANNED
 Required evidence: baseline feature specification, event schema, and tests covering context explanation and residual risk.
