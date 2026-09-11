@@ -25,6 +25,48 @@ This document defines the strict TypeScript-oriented data contracts for Silent S
 - Absence of `observed_volume_sum` or `observed_volume_max` means no numeric volume observation was present for that actor/window. It must not be normalized to observed zero.
 - Pseudonymous entity identifiers are defined in Milestone 1 and used by default in case and audit records beginning in Milestone 8.
 
+## Baseline snapshot contract
+
+The Milestone 3 baseline snapshot is intentionally minimal and deterministic. It preserves exact counts, canonical provenance, and unavailable-state semantics without exposing legacy aggregate history maps.
+
+- `sampleCount` means the number of contributing baseline units. For personal baselines, this is the count of qualifying observations for the actor. For peer baselines, this is the count of contributing peer actors. For resource baselines, this is the count of qualifying observations for the exact resource.
+- `observationCount` means the underlying raw observation count. For peer baselines, this includes all contributing raw observations across peer actors. For personal and resource baselines, it usually matches `sampleCount` unless the same unit is represented by multiple observations. It is always the raw observation count retained in provenance.
+- `median`/`mad`/`min`/`max` are null whenever `available` is false, even when raw observations exist but the threshold is not met. Actual counts and provenance are preserved.
+- Peer baselines use `median-of-peer-medians`: each peer actor contributes one median value, and the cohort baseline is the median of those peer medians. Peer `sampleCount` is the number of contributing peers; peer `observationCount` is the total underlying observations across peers.
+- Cohort identity resolution is explicit: a cohort member must exist in the provided explicit entity list before baseline generation accepts it. Observation presence alone is not used to infer identity.
+- `minimumSampleCount` must be a finite integer greater than or equal to 1. Values of `0`, negative numbers, fractional values, `NaN`, and infinities throw `BaselineConstructionError` with code `INVALID_MINIMUM_SAMPLE_COUNT`.
+- Unavailable baselines are encoded as `available: false` with null statistic fields, retained counts, retained provenance, and `notes: 'The minimum sample threshold was not met.'`.
+- Resource inclusion is exact: `observation.resourceId === requestedResourceId`. Other resources are excluded even if same actor or same feature name.
+- Provenance remains canonical and deterministic: `sourceObservationIds` and `sourceEventIds` are sorted by timestamp and then by ID when timestamps tie, and they reflect the exact events used in the baseline summary.
+
+### BaselineSnapshot
+
+```ts
+export interface BaselineSnapshot extends IdRecord {
+  schemaVersion: SchemaVersion;
+  actorEntityId: string;
+  asOf: string;
+  baselineType: 'PERSONAL' | 'PEER_COHORT' | 'RESOURCE';
+  featureName: string;
+  sampleCount: number;
+  observationCount: number;
+  median: number | null;
+  mad: number | null;
+  min: number | null;
+  max: number | null;
+  coverage: number;
+  quality: DataQualityLevel;
+  available: boolean;
+  sourceObservationIds: string[];
+  sourceEventIds: string[];
+  cohortId?: string;
+  resourceId?: string;
+  timeRangeStart?: string;
+  timeRangeEnd?: string;
+  notes?: string;
+}
+```
+
 ## Shared primitive types
 
 ```ts

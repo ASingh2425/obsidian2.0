@@ -67,6 +67,8 @@ Rollback point:
 - pause feature extraction and revalidate event-order rules
 
 ## Milestone 3: hierarchical baselines
+Status: IMPLEMENTED
+
 Entry criteria:
 - Milestone 2 complete
 - feature provenance validated
@@ -75,6 +77,7 @@ Deliverables:
 - hierarchical personal, cohort, and resource baselines
 - cold-start and sparse-history uncertainty handling
 - baseline tests
+- deterministic threshold validation and canonical provenance
 
 Acceptance references:
 - AT-BASE-PERSONAL-001
@@ -88,6 +91,8 @@ Acceptance references:
 Exit criteria:
 - baseline coverage, quality, and uncertainty are explicit
 - low-quality baselines increase uncertainty instead of risk
+- peer baselines use median-of-peer-medians with explicit cohort validation
+- resource baselines require exact resource matching and threshold-gated availability
 
 Prohibited scope:
 - change-point detection thresholds

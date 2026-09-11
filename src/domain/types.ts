@@ -120,17 +120,30 @@ export interface FeatureObservation extends IdRecord {
   source: 'EVENT' | 'DERIVED';
 }
 
+export type BaselineType = 'PERSONAL' | 'PEER_COHORT' | 'RESOURCE';
+
 export interface BaselineSnapshot extends IdRecord {
   schemaVersion: SchemaVersion;
   actorEntityId: string;
   asOf: string;
-  personalHistory: Record<string, number>;
-  roleHistory: Record<string, number>;
-  peerCohortHistory: Record<string, number>;
-  resourceHistory: Record<string, number>;
+  baselineType: BaselineType;
+  featureName: string;
+  sampleCount: number;
+  observationCount: number;
+  median: number | null;
+  mad: number | null;
+  min: number | null;
+  max: number | null;
   coverage: number;
   quality: DataQualityLevel;
+  available: boolean;
+  sourceObservationIds: string[];
   sourceEventIds: string[];
+  cohortId?: string;
+  resourceId?: string;
+  timeRangeStart?: string;
+  timeRangeEnd?: string;
+  notes?: string;
 }
 
 export interface ChangePoint extends IdRecord {

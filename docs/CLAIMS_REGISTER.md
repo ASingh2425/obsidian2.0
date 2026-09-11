@@ -55,10 +55,10 @@ Status: PLANNED
 Required evidence: evidence identifiers and deterministic explanation fallback.
 Public use: allowed only if output explicitly references evidence and uncertainty.
 
-### Claim: supports role and peer-cohort baselines
-Status: PLANNED
-Required evidence: baseline schema and tests for cold-start and role-change scenarios.
-Public use: allowed only in planned or visionary language.
+### Claim: deterministic personal, peer, and resource baselines with explicit threshold gating
+Status: IMPLEMENTED
+Required evidence: Milestone 3 baseline logic, direct acceptance tests, deterministic provenance, and threshold enforcement for minimum sample counts.
+Public use: permitted only as a verified Milestone 3 capability.
 
 ### Claim: supports partially explained context coverage
 Status: PLANNED

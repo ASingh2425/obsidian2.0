@@ -12,6 +12,16 @@ This document is the single authoritative source for Silent Shift acceptance tes
 - Event ordering is defined before evaluation. A later event cannot affect an earlier detection result.
 - Missing time windows may produce INDETERMINATE when the evaluation lacks sufficient coverage.
 
+## Acceptance test map for Milestone 3
+
+- AT-BASE-PERSONAL-001: personal actor filtering, cutoff semantics, invalid numeric values, minimum threshold behavior, canonical ordering, and immutability
+- AT-BASE-PEER-001: peer weighting, cohort validation, unresolved/known-zero semantics, duplicate-member handling, and provenance integrity
+- AT-BASE-RESOURCE-001: exact resource matching, cutoff exclusion, missing resource semantics, and resource anomaly threshold behavior
+- AT-BASE-RESOURCE-002: multi-actor resource contribution isolation and exact entity/resource boundaries
+- AT-BASE-RESOURCE-003: exact historical cutoff and future-event exclusion
+- AT-BASE-RESOURCE-004: unavailable baseline representation and threshold insufficiency
+- AT-BASE-RESOURCE-005: deterministic identical-input behavior
+
 ## Acceptance tests
 
 ### AT-NORM-001: Event normalization preserves behavioral telemetry and keeps context separate
