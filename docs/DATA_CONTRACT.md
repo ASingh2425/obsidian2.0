@@ -197,7 +197,7 @@ export interface BaselineSnapshot extends IdRecord {
 }
 ```
 
-## Change points and evidence
+## Change points, sequences, and evidence
 
 ```ts
 export interface ChangePoint extends IdRecord {
@@ -206,6 +206,17 @@ export interface ChangePoint extends IdRecord {
   observedAt: string;
   featureName: string;
   rawDeviationScore: number;
+  relatedEventIds: string[];
+  evidenceId: string;
+}
+
+export interface ShiftSequence extends IdRecord {
+  schemaVersion: 'silent-shift.v1';
+  actorEntityId: string;
+  changePointIds: string[];
+  firstObservedAt: string;
+  lastObservedAt: string;
+  features: string[];
   relatedEventIds: string[];
   evidenceId: string;
 }
@@ -219,6 +230,15 @@ export interface EvidenceItem extends IdRecord {
   narrativeEvidenceIds: string[];
 }
 ```
+
+### ShiftSequence and Evidence Identity Semantics
+- **Stable Origin-Based Identity**: Sequence identity is anchored to the immutable origin of the sequence:
+  - `sequence.id`: `sequence|silent-shift.v1|<actorEntityId>|<firstObservedAt>|<firstChangePointId>`
+  - `evidenceId`: `evidence|sequence|silent-shift.v1|<actorEntityId>|<firstObservedAt>|<firstChangePointId>`
+- **Monotonic Causal Extension**: As subsequent qualifying change points arrive, they append to the sequence. The `lastObservedAt`, `changePointIds`, `features`, and `relatedEventIds` fields extend monotonically, while `sequence.id` and `evidenceId` remain immutable.
+- **Closed Sequence Immutability**: Once closed by the temporal gap policy (`maxTemporalGapMs`) or total span constraint (`maxSequenceSpanMs`), a sequence never re-opens. Later change points cannot alter closed sequences.
+- **Distinct-Feature Gate**: A public `ShiftSequence` requires change points covering at least two distinct `featureName` values. Single-feature candidates remain internal proto-clusters and are not emitted.
+
 
 ## Context model
 
@@ -246,7 +266,57 @@ export interface ContextMatch extends IdRecord {
   outcome: ContextOutcome;
   notes: string;
 }
+
+export type ContextMatchReason =
+  | 'MATCHED'
+  | 'NO_APPLICABLE_CONTEXT'
+  | 'TEMPORAL_MISMATCH'
+  | 'ACTOR_MISMATCH'
+  | 'RESOURCE_MISMATCH'
+  | 'OPERATION_MISMATCH'
+  | 'INSUFFICIENT_EVIDENCE';
+
+export type CompatibilityTriState = 'COMPATIBLE' | 'INCOMPATIBLE' | 'INDETERMINATE';
+
+export type ContextReconciliationState =
+  | 'EXPLAINED'
+  | 'PARTIALLY_EXPLAINED'
+  | 'UNEXPLAINED'
+  | 'INDETERMINATE';
+
+export interface ChangePointContextMatch {
+  readonly changePointId: string;
+  readonly matched: boolean;
+  readonly matchedGrantIds: readonly string[];
+  readonly temporalOverlap: CompatibilityTriState;
+  readonly scopeCompatible: CompatibilityTriState;
+  readonly matchReason: ContextMatchReason;
+}
+
+export interface ContextReconciliationResult extends IdRecord {
+  readonly sequenceId: string;
+  readonly actorEntityId: string;
+  readonly reconciliationState: ContextReconciliationState;
+  readonly matchedGrantIds: readonly string[];
+  readonly changePointMatches: readonly ChangePointContextMatch[];
+  readonly evidenceItem: EvidenceItem;
+  readonly coveredEventIds: readonly string[];
+  readonly uncoveredEventIds: readonly string[];
+}
 ```
+
+### Milestone 6 Context Reconciliation Semantics
+- **Source Event Truth**: Source `SecurityEvent` records are authoritative for actual resources and actions. Reconciliation inspects resolved contributing events, not heuristic feature-name strings.
+- **ContextType vs. Authorization Separation**: Organizational context types (such as `MAINTENANCE_WINDOW` or `ROLE_CHANGE`) describe administrative purpose and do not confer implicit technical operational authorization. Technical operations are governed strictly by `authorizedOperations` / `actionScope`.
+- **Tri-State Compatibility**: `CompatibilityTriState` (`'COMPATIBLE' | 'INCOMPATIBLE' | 'INDETERMINATE'`) avoids falsely encoding missing information as incompatible.
+- **Sequence Aggregation Truth Table**:
+  - `EXPLAINED`: All constituent change points are `MATCHED`.
+  - `PARTIALLY_EXPLAINED`: At least one change point is `MATCHED`, and at least one is deterministically unmatched.
+  - `UNEXPLAINED`: No constituent change point is `MATCHED`, and compatibility was deterministically evaluated.
+  - `INDETERMINATE`: Any constituent change point evaluates to `INDETERMINATE` (structural uncertainty propagates conservatively).
+- **Conservative Mixed-Event Policy**: If a single `ChangePoint` contains multiple contributing events where some are authorized and some are unauthorized, the change point is treated as not fully matched. Fractional splitting of change points is prohibited in Milestone 6.
+- **Valid-Time vs Knowledge-Time**: Reconciliation enforces strict valid-time temporal causality at evaluation time $T$ ($t_{\text{validFrom}} \le T$, with closed interval $[t_{\text{validFrom}}, t_{\text{validUntil}}]$). Because the canonical `ContextGrant` schema lacks ingestion timestamps (`recordedAt`, `ingestedAt`), knowledge-time causality cannot be verified. This is documented as a known schema limitation.
+- **EvidenceItem Discipline**: `sourceEventIds` contains exclusively canonical `SecurityEvent` IDs. Contributing context grants and sequences are referenced structurally via `narrativeEvidenceIds`. Summary text is strictly deterministic and non-evaluative.
 
 ## Risk and case model
 
@@ -280,6 +350,28 @@ export interface InvestigationCase extends IdRecord {
 }
 ```
 
+### Milestone 7 Risk Composition Semantics
+- **Separation of 5 Core Dimensions**: `rawDeviation`, `contextCoverage`, `residualRisk`, `confidence`, and `dataQuality` remain strictly separate per `AT-RISK-001`.
+- **Soft-Saturation Aggregation**: Individual change-point deviation scores $z$ are normalized into $[0, 1)$ via $s(z) = 1.0 - \frac{1.0}{1.0 + z / z_0}$ with $z_0 = 3.0$ (canonical detection threshold). Multiple change points are aggregated sub-additively via $1.0 - \prod_{c_i} (1.0 - s(c_i))$.
+  - `rawDeviation`: Aggregates all constituent change points of the sequence.
+  - `residualRisk`: Aggregates exclusively residual (uncovered and indeterminate) change points.
+- **Context Coverage Ratio**: Computed strictly as $\frac{\text{coveredChangePointIds.length}}{\text{relatedChangePointIds.length}}$ for the assessed sequence.
+- **Structural Confidence**:
+  $$\text{confidence} = \text{eventCompletenessRatio} \times \text{contextCertaintyRatio}$$
+  where $\text{eventCompletenessRatio} = \frac{\text{resolvedSourceEvents}}{\text{totalRequiredEvents}}$ and $\text{contextCertaintyRatio} = \frac{\text{determinsticEvaluableCPs}}{\text{totalCPs}}$.
+- **Structural Data Quality**: `DataQuality.level` is derived structurally without arbitrary numerical percentage cutoffs:
+  - `HIGH`: All required source events resolve and zero indeterminate context matches exist.
+  - `LOW`: One or more required source events are missing or context match is `INSUFFICIENT_EVIDENCE`.
+- **Pre-M8 Case Identity**: `RiskAssessment.caseId` is set to `ShiftSequence.id`.
+- **Outcome States**:
+  - `EXPLAINED`: `contextCoverage = 1.0`, `residualRisk = 0.0`, while `rawDeviation` preserves observed behavioral magnitude. Context describes operational authorization, not human intent.
+  - `PARTIALLY_EXPLAINED`: `residualRisk` is composed directly from the specific uncovered change points.
+  - `UNEXPLAINED`: `contextCoverage = 0.0`, `residualRisk = rawDeviation`.
+  - `INDETERMINATE`: Unresolved change points remain in residual risk without uncertainty penalties; uncertainty is reflected through downgraded confidence and data quality.
+- **Deterministic Fallback Explainer**: Implements `AT-EXPLAIN-001` producing inspectable, repeatable text without an LLM. Banned subjective labels (`malicious`, `benign`, `safe`, `innocent`, `guilty`, `suspicious`, `rogue`, `attack`, `critical`, `high risk`) are strictly omitted.
+- **Known Limitations (v1)**: Multiple derived change points sharing identical source events contribute sub-additively via diminishing returns rather than linear inflation, but are not collapsed into a single feature.
+
+
 ## Analyst decision and audit log
 
 ```ts
@@ -295,7 +387,7 @@ export interface AnalystDecision extends IdRecord {
 
 export interface AuditEvent extends IdRecord {
   schemaVersion: 'silent-shift.v1';
-  eventType: 'CASE_CREATED' | 'CONTEXT_CORRECTION' | 'DECISION_LOGGED' | 'CASE_REOPENED';
+  eventType: 'CASE_CREATED' | 'CONTEXT_CORRECTION' | 'DECISION_LOGGED' | 'CASE_REOPENED' | 'CASE_UPDATED';
   caseId?: string;
   decisionId?: string;
   actorEntityId?: string;
@@ -304,6 +396,15 @@ export interface AuditEvent extends IdRecord {
   createdAt: string;
 }
 ```
+
+## Milestone 8: Case Management, Alert Ranking, and Auditability Semantics
+- **Ranking Tuple**: Deterministic 4-element orthogonal tuple:
+  `⟨residualRisk (desc), confidence (desc), createdAt (desc), case.id (asc)⟩`.
+  ContextOutcome is not double-scored in ranking. No arbitrary weights, score multipliers, or severity bands.
+- **Audit Event Extension**: `CASE_UPDATED` records causal sequence extension on an existing case without erasing prior analyst decisions or closing/reopening the case.
+- **Derived Lifecycle**: Case status is deterministically derived from append-only `AnalystDecision[]` history (`NEW`, `PENDING_REVIEW`, `CONTEXT_REQUESTED`, `ESCALATED`, `CLOSED_NO_ACTION`, `CLOSED`, `REOPENED`).
+- **Idempotency**: All human/system actions require caller-supplied action IDs. Duplicate submissions with identical action IDs are idempotent no-ops.
+- **Pseudonymization**: Case and audit records enforce pseudonymous actor identifiers (`USER-ALICE`, `USR-042`, `ANALYST-101`, `system`). Raw full names and email addresses are rejected (`AT-PRIV-001`).
 
 ## Required invariants
 - Every important record must have a stable ID.
@@ -317,6 +418,21 @@ export interface AuditEvent extends IdRecord {
 - Prototype data must be session-scoped; durable storage is PLANNED.
 - `schemaVersion` must remain `"silent-shift.v1"` across fixture and domain objects.
 - Pseudonymous identifiers are used by default for case and audit display after Milestone 8 and in visual display by Milestone 10.
+
+## Milestone 9: Offline Evaluation, Benchmark Reporting, and Claim Register
+- **Claim Status Taxonomy**: All public claims must hold an unambiguous disposition from the 6 approved statuses:
+  `VERIFIED_IN_FIXTURES`, `SIMULATED`, `PLANNED`, `EXPERIMENTAL`, `OUT_OF_SCOPE`, `REJECTED_UNSUPPORTED`.
+- **Immutability of ProductClaim**: The static claim register (`ProductClaim`) is strictly immutable. Dynamic execution outputs are captured in separate `ClaimEvaluationResult` records. Failed benchmarks transition effective status to `REJECTED_UNSUPPORTED` with diagnostic information.
+- **Verification Scope**: Claims marked `VERIFIED_IN_FIXTURES` declare `verificationScope: 'SYNTHETIC_FIXTURES_ONLY'` and `requiresExternalValidation: true`. Fixture verification does not imply or measure live enterprise performance.
+- **Declarative Expectations**: Benchmark expectations are serializable, inspectable data constraints (`EQUALS`, `GREATER_THAN`, `BETWEEN_EXCLUSIVE`, etc.) rather than opaque executable functions.
+- **Non-Marketing Aggregate Metrics**:
+  - `ScenarioExpectationPassRate = passing registered scenarios / registered scenarios`
+  - `ContextOutcomeExpectationAgreementRate = scenarios whose computed outcome equals expected outcome / registered scenarios`
+  - `EvidenceResolutionRate = resolved expected SecurityEvent IDs / expected SecurityEvent IDs`
+  - `CaseConstructionExpectationPassRate = correctly constructed expected cases / expected cases`
+  - `AuditActionExpectationPassRate = correctly emitted expected audit actions / expected audit actions`
+  - `PrivacyComplianceRate = pseudonymous expected actor identifiers / expected actor identifiers`
+- **Zero-Denominator Rule**: Any metric with a zero denominator returns `null` (rendered as `"N/A"`), never `1.0` or `100%`.
 
 ## Resolved schema decision
 The fixture schema version is now resolved to:

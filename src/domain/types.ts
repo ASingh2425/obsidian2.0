@@ -156,6 +156,17 @@ export interface ChangePoint extends IdRecord {
   evidenceId: string;
 }
 
+export interface ShiftSequence extends IdRecord {
+  schemaVersion: SchemaVersion;
+  actorEntityId: string;
+  changePointIds: string[];
+  firstObservedAt: string;
+  lastObservedAt: string;
+  features: string[];
+  relatedEventIds: string[];
+  evidenceId: string;
+}
+
 export interface EvidenceItem extends IdRecord {
   schemaVersion: SchemaVersion;
   sourceEventIds: string[];
@@ -215,7 +226,7 @@ export interface AnalystDecision extends IdRecord {
 
 export interface AuditEvent extends IdRecord {
   schemaVersion: SchemaVersion;
-  eventType: 'CASE_CREATED' | 'CONTEXT_CORRECTION' | 'DECISION_LOGGED' | 'CASE_REOPENED';
+  eventType: 'CASE_CREATED' | 'CONTEXT_CORRECTION' | 'DECISION_LOGGED' | 'CASE_REOPENED' | 'CASE_UPDATED';
   caseId?: string;
   decisionId?: string;
   actorEntityId?: string;
