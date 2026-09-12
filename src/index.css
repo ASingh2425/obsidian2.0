@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./presentation/styles/tokens.css";
 
 @layer base {
   :root {

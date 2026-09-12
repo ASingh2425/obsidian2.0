@@ -1,0 +1,20 @@
+:root {
+  --obsidian-bg: #0b0e14;
+  --obsidian-surface: #111620;
+  --obsidian-surface-elevated: #18202f;
+  --obsidian-border: rgba(255, 255, 255, 0.08);
+  --obsidian-border-active: rgba(56, 189, 248, 0.35);
+
+  --obsidian-text-primary: #f1f5f9;
+  --obsidian-text-secondary: #94a3b8;
+  --obsidian-text-muted: #64748b;
+
+  --obsidian-accent-trajectory: #38bdf8;
+  --obsidian-accent-baseline: #818cf8;
+  --obsidian-accent-context: #34d399;
+  --obsidian-accent-resource: #f59e0b;
+  --obsidian-accent-device: #60a5fa;
+  --obsidian-accent-divergence: #fb923c;
+  --obsidian-accent-unavailable: #64748b;
+  --obsidian-accent-selected: #ffffff;
+}

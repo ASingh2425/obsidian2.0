@@ -1,0 +1,8 @@
+{
+  "name": "Obsidian",
+  "description": "Spatial forensics environment for behavioral security analysis.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
